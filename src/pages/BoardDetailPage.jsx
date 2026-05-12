@@ -409,38 +409,39 @@ const BoardDetailPage = () => {
 
       {/* Header */}
       <header className="p-4 flex items-center justify-between sticky top-0 z-10 shrink-0 relative">
-        <div className="flex items-center gap-6">
-          <button onClick={handleBack} className="p-2 rounded-lg hover:bg-white/10 transition-colors text-slate-300 hover:text-white">
+        <div className="flex items-center gap-2 sm:gap-6">
+          <button onClick={handleBack} className="p-2 rounded-lg hover:bg-white/10 transition-colors text-slate-300 hover:text-white shrink-0">
             <HiOutlineArrowLeft size={20} />
           </button>
-          <h1 className="text-lg font-black tracking-tight uppercase">{board.title}</h1>
+          <h1 className="text-sm sm:text-lg font-black tracking-tight uppercase truncate max-w-[100px] sm:max-w-none">{board.title}</h1>
           {changeLog.length > 0 && (
             <button
               onClick={() => { setCommitMessage(''); setIsCommitModalOpen(true); }}
-              className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-400 text-xs font-bold animate-pulse"
+              className="flex items-center gap-2 px-2 sm:px-3 py-1.5 bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-400 text-xs font-bold animate-pulse shrink-0"
             >
               <HiOutlineDocumentText size={14} />
-              <span>{changeLog.length} unsaved changes</span>
+              <span className="hidden sm:inline">{changeLog.length} unsaved changes</span>
+              <span className="sm:hidden">{changeLog.length}</span>
             </button>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           {isSearchOpen ? (
-            <div className="flex items-center bg-slate-800/50 rounded-lg px-3 py-1.5 border border-white/10">
+            <div className="flex items-center bg-slate-800 sm:bg-slate-800/50 rounded-lg px-2 sm:px-3 py-1.5 border border-white/10 absolute right-4 z-50 sm:static shadow-2xl sm:shadow-none">
               <HiOutlineSearch size={16} className="text-slate-400 mr-2 shrink-0" />
               <input 
                 type="text" 
                 autoFocus
-                placeholder="Search cards..." 
+                placeholder="Search..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-transparent text-white text-sm focus:outline-none w-48"
+                className="bg-transparent text-white text-sm focus:outline-none w-32 sm:w-48"
               />
               <button onClick={() => {setIsSearchOpen(false); setSearchQuery('');}} className="text-slate-500 hover:text-white ml-2 shrink-0">✕</button>
             </div>
           ) : (
-            <button onClick={() => setIsSearchOpen(true)} className="p-2 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-all">
+            <button onClick={() => setIsSearchOpen(true)} className="p-2 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-all shrink-0">
               <HiOutlineSearch size={20} />
             </button>
           )}

@@ -5,7 +5,7 @@ import KanbanCard from './KanbanCard';
 
 const KanbanColumn = ({ column, dragHandleProps, onAddCard, onCardClick, onDeleteColumn, onEditColumn }) => {
   return (
-    <div className="flex flex-col w-72 min-w-[18rem] h-full bg-slate-950/40 rounded-2xl p-3 border border-white/5">
+    <div className="flex flex-col w-[85vw] max-w-[320px] sm:max-w-none sm:w-72 sm:min-w-[18rem] shrink-0 h-full bg-slate-950/40 rounded-2xl p-3 border border-white/5">
       <div 
         {...dragHandleProps}
         className="flex items-center justify-between mb-4 px-1 cursor-grab active:cursor-grabbing group"
@@ -18,7 +18,7 @@ const KanbanColumn = ({ column, dragHandleProps, onAddCard, onCardClick, onDelet
             {column.cards.length}
           </span>
         </div>
-        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
           <button onClick={() => onEditColumn(column)} className="text-slate-500 hover:text-blue-400 p-1.5 rounded-md hover:bg-slate-800 transition-all">
             <HiOutlinePencil size={14} />
           </button>
