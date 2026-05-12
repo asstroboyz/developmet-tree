@@ -1,5 +1,5 @@
 export const developmentTiBoard = {
-  id: "development-ti",
+  id: "development",
   title: "Development TI",
   columns: [
     {

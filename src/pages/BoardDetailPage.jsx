@@ -135,9 +135,31 @@ const BoardDetailPage = () => {
     }]);
   };
 
+  const generateCommitMessage = (logs) => {
+    if (!logs.length) return '';
+    const actionMap = {
+      ADD_CARD: 'add',
+      ADD_COLUMN: 'add',
+      ADD_COMMENT: 'comment',
+      ADD_ATTACHMENT: 'attach',
+      MOVE_CARD: 'move',
+      MOVE_COLUMN: 'move',
+      REORDER_CARD: 'reorder',
+    };
+    // Group by action type
+    const counts = {};
+    logs.forEach(log => {
+      const prefix = actionMap[log.action] || 'update';
+      counts[prefix] = (counts[prefix] || 0) + 1;
+    });
+    // Build message like: "add: 2 cards, move: 1 card"
+    const parts = Object.entries(counts).map(([action, count]) => `${action}: ${count} change${count > 1 ? 's' : ''}`);
+    return parts.join(', ');
+  };
+
   const handleBack = () => {
     if (changeLog.length > 0) {
-      setCommitMessage('');
+      setCommitMessage(generateCommitMessage(changeLog));
       setIsCommitModalOpen(true);
     } else {
       navigate('/');
@@ -145,7 +167,7 @@ const BoardDetailPage = () => {
   };
 
   useEffect(() => {
-    if (id === 'development-ti') {
+    if (id === 'development') {
       setBoard(JSON.parse(JSON.stringify(developmentTiBoard)));
     } else {
       setBoard({
