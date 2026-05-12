@@ -8,27 +8,6 @@ export const developmentBoard = {
       "color": "border-blue-500",
       "cards": [
         {
-          "id": "task-1",
-          "title": "Setup Arsitektur Microservices",
-          "startDate": "2026-05-01",
-          "endDate": "2026-05-10",
-          "description": "Mempersiapkan infrastruktur dasar untuk layanan baru.",
-          "priority": "high",
-          "subtasks": [
-            {
-              "id": "st-1",
-              "text": "Design DB Schema",
-              "completed": true
-            },
-            {
-              "id": "st-2",
-              "text": "Dockerization",
-              "completed": false
-            }
-          ],
-          "comments": []
-        },
-        {
           "id": "task-7",
           "title": "Research Next.js 15",
           "startDate": "2026-05-15",
@@ -60,18 +39,6 @@ export const developmentBoard = {
             }
           ],
           "comments": []
-        },
-        {
-          "title": "Testing",
-          "description": "",
-          "priority": "medium",
-          "storyPoints": "",
-          "startDate": "2026-05-12",
-          "endDate": "2026-05-12",
-          "id": "task-1778554066284",
-          "subtasks": [],
-          "comments": [],
-          "attachments": []
         }
       ]
     },
