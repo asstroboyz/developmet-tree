@@ -5,7 +5,7 @@ import { HiOutlinePlusCircle } from 'react-icons/hi';
 
 const BoardListPage = () => {
   return (
-    <div className="h-screen flex flex-col bg-[#0f172a] text-white overflow-hidden">
+    <div className="h-[100dvh] flex flex-col bg-[#0f172a] text-white overflow-hidden">
       <header className="p-8 pb-4 shrink-0">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
           <div>

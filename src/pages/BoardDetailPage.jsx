@@ -408,12 +408,12 @@ const BoardDetailPage = () => {
     return newBoard;
   };
 
-  if (!board) return <div className="h-screen bg-[#0f172a] flex items-center justify-center text-white">Loading...</div>;
+  if (!board) return <div className="h-[100dvh] bg-[#0f172a] flex items-center justify-center text-white">Loading...</div>;
 
   const filteredBoard = getFilteredBoard();
 
   return (
-    <div className="h-screen flex flex-col bg-board text-white overflow-hidden relative">
+    <div className="h-[100dvh] flex flex-col bg-board text-white overflow-hidden relative">
       <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px]"></div>
 
       {/* Header */}

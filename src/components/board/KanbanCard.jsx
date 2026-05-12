@@ -32,7 +32,7 @@ const KanbanCard = ({ card, index, onClick }) => {
             <h4 className="text-sm font-bold text-slate-100 leading-tight group-hover:text-white transition-colors">
               {card.title}
             </h4>
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
               <HiOutlinePencil size={14} className="text-slate-500 hover:text-primary-400" />
             </div>
           </div>
