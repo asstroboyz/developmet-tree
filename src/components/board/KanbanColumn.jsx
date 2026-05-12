@@ -1,9 +1,9 @@
 import React from 'react';
 import { Droppable } from '@hello-pangea/dnd';
-import { HiOutlinePlus, HiDotsHorizontal } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineTrash, HiOutlinePencil } from 'react-icons/hi';
 import KanbanCard from './KanbanCard';
 
-const KanbanColumn = ({ column, dragHandleProps, onAddCard, onCardClick }) => {
+const KanbanColumn = ({ column, dragHandleProps, onAddCard, onCardClick, onDeleteColumn, onEditColumn }) => {
   return (
     <div className="flex flex-col w-72 min-w-[18rem] h-full bg-slate-950/40 rounded-2xl p-3 border border-white/5">
       <div 
@@ -18,9 +18,14 @@ const KanbanColumn = ({ column, dragHandleProps, onAddCard, onCardClick }) => {
             {column.cards.length}
           </span>
         </div>
-        <button className="text-slate-600 hover:text-white p-1 rounded-md hover:bg-slate-800 transition-all">
-          <HiDotsHorizontal size={16} />
-        </button>
+        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={() => onEditColumn(column)} className="text-slate-500 hover:text-blue-400 p-1.5 rounded-md hover:bg-slate-800 transition-all">
+            <HiOutlinePencil size={14} />
+          </button>
+          <button onClick={() => onDeleteColumn(column.id)} className="text-slate-500 hover:text-rose-400 p-1.5 rounded-md hover:bg-slate-800 transition-all">
+            <HiOutlineTrash size={14} />
+          </button>
+        </div>
       </div>
       
       <Droppable droppableId={column.id} type="task">

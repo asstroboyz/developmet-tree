@@ -19,6 +19,8 @@ const BoardDetailPage = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isAddColumnModalOpen, setIsAddColumnModalOpen] = useState(false);
+  const [isEditColumnModalOpen, setIsEditColumnModalOpen] = useState(false);
+  const [editingColumnId, setEditingColumnId] = useState(null);
   const [isCommitModalOpen, setIsCommitModalOpen] = useState(false);
   const [activeColumnId, setActiveColumnId] = useState(null);
   const [selectedCard, setSelectedCard] = useState(null);
@@ -31,6 +33,17 @@ const BoardDetailPage = () => {
   const [commitError, setCommitError] = useState('');
   const [showAddMenu, setShowAddMenu] = useState(false);
   const fileInputRef = useRef(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [filterColumn, setFilterColumn] = useState('all');
+  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
+  const [isBoardMenuOpen, setIsBoardMenuOpen] = useState(false);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
+
+  const confirmAction = (title, message, onConfirm) => {
+    setConfirmModal({ isOpen: true, title, message, onConfirm });
+  };
+  
   const [newCardData, setNewCardData] = useState({
     title: '',
     description: '',
@@ -66,20 +79,27 @@ const BoardDetailPage = () => {
     e.target.value = '';
   };
 
-  const exportBoardToJS = () => {
-    const cleanBoard = JSON.parse(JSON.stringify(board));
-    // Remove base64 attachment data to keep file small
-    cleanBoard.columns.forEach(col => {
+  const exportBoardToCSV = () => {
+    const headers = ['Task ID', 'Status Column', 'Title', 'Description', 'Priority', 'Story Points', 'Start Date', 'End Date'];
+    let csvContent = headers.join(',') + '\n';
+
+    board.columns.forEach(col => {
       col.cards.forEach(card => {
-        if (card.attachments) {
-          card.attachments = card.attachments.map(att => ({
-            id: att.id, name: att.name, type: att.type, size: att.size
-          }));
-        }
+        const row = [
+          card.id,
+          `"${col.title}"`,
+          `"${(card.title || '').replace(/"/g, '""')}"`,
+          `"${(card.description || '').replace(/"/g, '""')}"`,
+          card.priority || 'medium',
+          card.storyPoints || '',
+          card.startDate || '',
+          card.endDate || ''
+        ];
+        csvContent += row.join(',') + '\n';
       });
     });
-    const jsContent = `export const ${board.id.replace(/-/g, '')}Board = ${JSON.stringify(cleanBoard, null, 2)};\n`;
-    return jsContent;
+
+    return csvContent;
   };
 
   const handleCommit = async () => {
@@ -221,6 +241,67 @@ const BoardDetailPage = () => {
     logChange('MOVE_CARD', `Moved "${removed.title}" from ${startColumn.title} → ${finishColumn.title}`);
   };
 
+  const updateCardDetail = (field, value) => {
+    const updatedCards = board.columns.find(col => col.id === activeColumnId).cards.map(card => {
+      if (card.id === selectedCard.id) {
+        const updatedCard = { ...card, [field]: value };
+        return updatedCard;
+      }
+      return card;
+    });
+    const newColumns = board.columns.map(col => col.id === activeColumnId ? { ...col, cards: updatedCards } : col);
+    setBoard({ ...board, columns: newColumns });
+    logChange('EDIT_CARD', `Updated ${field} for "${selectedCard.title}"`);
+  };
+
+  const deleteCard = () => {
+    confirmAction(
+      'Delete Card',
+      `Are you sure you want to delete card "${selectedCard.title}"?`,
+      () => {
+        const column = board.columns.find(col => col.id === activeColumnId);
+        const updatedCards = column.cards.filter(card => card.id !== selectedCard.id);
+        const newColumns = board.columns.map(col => col.id === activeColumnId ? { ...col, cards: updatedCards } : col);
+        setBoard({ ...board, columns: newColumns });
+        logChange('DELETE_CARD', `Deleted card "${selectedCard.title}"`);
+        setIsDetailModalOpen(false);
+      }
+    );
+  };
+
+  const handleEditColumn = (column) => {
+    setEditingColumnId(column.id);
+    setNewColumnTitle(column.title);
+    setNewColumnColor(column.color);
+    setIsEditColumnModalOpen(true);
+  };
+
+  const saveEditColumn = () => {
+    if (!newColumnTitle.trim()) return;
+    const newColumns = board.columns.map(col => {
+      if (col.id === editingColumnId) {
+        return { ...col, title: newColumnTitle, color: newColumnColor };
+      }
+      return col;
+    });
+    setBoard({ ...board, columns: newColumns });
+    logChange('EDIT_COLUMN', `Updated column "${newColumnTitle}"`);
+    setIsEditColumnModalOpen(false);
+  };
+
+  const handleDeleteColumn = (columnId) => {
+    const colToDelete = board.columns.find(c => c.id === columnId);
+    confirmAction(
+      'Delete Column',
+      `Are you sure you want to delete column "${colToDelete.title}" and all its cards?`,
+      () => {
+        const newColumns = board.columns.filter(col => col.id !== columnId);
+        setBoard({ ...board, columns: newColumns });
+        logChange('DELETE_COLUMN', `Deleted column "${colToDelete.title}"`);
+      }
+    );
+  };
+
   const handleAddColumn = () => {
     setNewColumnTitle('');
     setNewColumnColor('border-blue-500');
@@ -296,7 +377,31 @@ const BoardDetailPage = () => {
     setCommentText('');
   };
 
+  const getFilteredBoard = () => {
+    if (!board) return null;
+    const newBoard = { ...board };
+
+    let columnsToProcess = newBoard.columns;
+    if (filterColumn !== 'all') {
+      columnsToProcess = columnsToProcess.filter(col => col.id === filterColumn);
+    }
+
+    newBoard.columns = columnsToProcess.map(col => {
+      let filteredCards = col.cards;
+      if (searchQuery) {
+        filteredCards = filteredCards.filter(card => 
+          card.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+          (card.description && card.description.toLowerCase().includes(searchQuery.toLowerCase()))
+        );
+      }
+      return { ...col, cards: filteredCards };
+    });
+    return newBoard;
+  };
+
   if (!board) return <div className="h-screen bg-[#0f172a] flex items-center justify-center text-white">Loading...</div>;
+
+  const filteredBoard = getFilteredBoard();
 
   return (
     <div className="h-screen flex flex-col bg-board text-white overflow-hidden relative">
@@ -321,15 +426,93 @@ const BoardDetailPage = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <button className="p-2 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-all">
-            <HiOutlineSearch size={20} />
-          </button>
-          <button className="p-2 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-all">
-            <HiOutlineFilter size={20} />
-          </button>
-          <button className="p-2 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-all">
-            <HiOutlineDotsHorizontal size={20} />
-          </button>
+          {isSearchOpen ? (
+            <div className="flex items-center bg-slate-800/50 rounded-lg px-3 py-1.5 border border-white/10">
+              <HiOutlineSearch size={16} className="text-slate-400 mr-2 shrink-0" />
+              <input 
+                type="text" 
+                autoFocus
+                placeholder="Search cards..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-transparent text-white text-sm focus:outline-none w-48"
+              />
+              <button onClick={() => {setIsSearchOpen(false); setSearchQuery('');}} className="text-slate-500 hover:text-white ml-2 shrink-0">✕</button>
+            </div>
+          ) : (
+            <button onClick={() => setIsSearchOpen(true)} className="p-2 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-all">
+              <HiOutlineSearch size={20} />
+            </button>
+          )}
+
+          <div className="relative">
+            <button onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)} className={`p-2 rounded-lg transition-all ${filterColumn !== 'all' ? 'bg-blue-600 text-white' : 'hover:bg-white/10 text-slate-300 hover:text-white'}`}>
+              <HiOutlineFilter size={20} />
+            </button>
+            {isFilterMenuOpen && (
+              <div className="absolute top-full right-0 mt-2 w-48 bg-slate-800 border border-white/10 rounded-xl shadow-2xl p-2 z-50">
+                <div className="text-xs font-bold text-slate-400 mb-2 px-2 uppercase tracking-wider">Filter Column</div>
+                <button 
+                  onClick={() => { setFilterColumn('all'); setIsFilterMenuOpen(false); }}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm font-bold transition-all ${filterColumn === 'all' ? 'bg-blue-600/20 text-blue-400' : 'text-slate-300 hover:bg-white/5'}`}
+                >
+                  All Columns
+                </button>
+                {board.columns.map(col => (
+                  <button 
+                    key={col.id}
+                    onClick={() => { setFilterColumn(col.id); setIsFilterMenuOpen(false); }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-bold transition-all ${filterColumn === col.id ? 'bg-blue-600/20 text-blue-400' : 'text-slate-300 hover:bg-white/5'}`}
+                  >
+                    {col.title}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="relative">
+            <button onClick={() => setIsBoardMenuOpen(!isBoardMenuOpen)} className="p-2 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-all">
+              <HiOutlineDotsHorizontal size={20} />
+            </button>
+            {isBoardMenuOpen && (
+              <div className="absolute top-full right-0 mt-2 w-56 bg-slate-800 border border-white/10 rounded-xl shadow-2xl p-2 z-50">
+                <div className="text-xs font-bold text-slate-400 mb-2 px-2 uppercase tracking-wider">Board Options</div>
+                <button 
+                  onClick={() => {
+                    const csv = exportBoardToCSV();
+                    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${(board.title || 'board').replace(/\s+/g, '-')}-export.csv`;
+                    a.click();
+                    setIsBoardMenuOpen(false);
+                  }}
+                  className="w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-white/5 transition-all"
+                >
+                  <HiOutlineDocumentText size={16} /> Export to CSV (Excel)
+                </button>
+                <button 
+                  onClick={() => {
+                    confirmAction(
+                      'Clear All Cards',
+                      'Are you sure you want to clear all cards? This cannot be undone.',
+                      () => {
+                        const newColumns = board.columns.map(col => ({...col, cards: []}));
+                        setBoard({...board, columns: newColumns});
+                        logChange('CLEAR_BOARD', 'Cleared all cards from board');
+                      }
+                    );
+                    setIsBoardMenuOpen(false);
+                  }}
+                  className="w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-rose-400 hover:bg-rose-500/10 transition-all"
+                >
+                  <HiOutlineTrash size={16} /> Clear All Cards
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -342,7 +525,7 @@ const BoardDetailPage = () => {
               ref={provided.innerRef}
               className="flex-grow overflow-x-auto p-4 flex gap-4 items-start custom-scrollbar h-full relative"
             >
-              {board.columns.map((column, index) => (
+              {filteredBoard.columns.map((column, index) => (
                 <Draggable key={column.id} draggableId={column.id} index={index}>
                   {(provided) => (
                     <div {...provided.draggableProps} ref={provided.innerRef} className="h-full">
@@ -351,6 +534,8 @@ const BoardDetailPage = () => {
                         dragHandleProps={provided.dragHandleProps} 
                         onAddCard={handleAddCard}
                         onCardClick={handleCardClick}
+                        onDeleteColumn={handleDeleteColumn}
+                        onEditColumn={handleEditColumn}
                       />
                     </div>
                   )}
@@ -368,23 +553,7 @@ const BoardDetailPage = () => {
         </Droppable>
       </DragDropContext>
 
-      {/* Floating Bottom Nav */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20">
-        <nav className="flex items-center gap-1 p-1 bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl">
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-slate-400 hover:text-white transition-all text-sm font-bold">
-            <HiOutlineInbox size={18} />
-            <span>Inbox</span>
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-slate-400 hover:text-white transition-all text-sm font-bold">
-            <HiOutlineCalendar size={18} />
-            <span>Planner</span>
-          </button>
-          <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-900/40 transition-all text-sm font-bold">
-            <HiOutlineViewGrid size={18} />
-            <span>Board</span>
-          </button>
-        </nav>
-      </div>
+
 
       {/* Detail Modal (Trello Style) */}
       <Modal isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} title={`Task in ${activeColumnId?.replace('-', ' ')}`}>
@@ -393,10 +562,23 @@ const BoardDetailPage = () => {
             {/* Left Content */}
             <div className="flex-grow space-y-8">
               <div className="space-y-4">
-                <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                <div className="flex items-center gap-3 w-full">
                   <div className="w-5 h-5 border-2 border-slate-500 rounded-full shrink-0"></div>
-                  {selectedCard.title}
-                </h2>
+                  <input 
+                    type="text"
+                    value={selectedCard.title}
+                    onChange={(e) => setSelectedCard({...selectedCard, title: e.target.value})}
+                    onBlur={(e) => {
+                      if (e.target.value && e.target.value !== board.columns.find(c => c.id === activeColumnId).cards.find(c => c.id === selectedCard.id).title) {
+                        updateCardDetail('title', e.target.value);
+                      }
+                    }}
+                    className="text-2xl font-bold text-white bg-transparent border border-transparent focus:border-white/20 focus:bg-white/5 hover:bg-white/5 rounded px-2 py-1 w-full transition-all"
+                  />
+                  <button onClick={deleteCard} className="flex items-center gap-2 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-lg text-xs font-bold text-rose-400 transition-all ml-auto shrink-0">
+                    <HiOutlineTrash size={14} /> Delete
+                  </button>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   <div className="relative">
                     <button onClick={() => setShowAddMenu(!showAddMenu)} className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/15 border border-white/10 rounded-lg text-xs font-bold transition-all">
@@ -459,9 +641,15 @@ const BoardDetailPage = () => {
                   Description
                 </h4>
                 <textarea 
+                  value={selectedCard.description || ''}
+                  onChange={(e) => setSelectedCard({...selectedCard, description: e.target.value})}
+                  onBlur={(e) => {
+                    if (e.target.value !== board.columns.find(c => c.id === activeColumnId).cards.find(c => c.id === selectedCard.id).description) {
+                      updateCardDetail('description', e.target.value);
+                    }
+                  }}
                   placeholder="Add a more detailed description..."
                   className="w-full bg-white/5 border border-transparent focus:border-white/10 rounded-xl p-4 text-sm text-slate-300 h-32 resize-none transition-all placeholder:text-slate-600"
-                  defaultValue={selectedCard.description}
                 />
               </div>
 
@@ -644,6 +832,62 @@ const BoardDetailPage = () => {
         </div>
       </Modal>
 
+      {/* Edit Column Modal */}
+      <Modal isOpen={isEditColumnModalOpen} onClose={() => setIsEditColumnModalOpen(false)} title="Edit Column">
+        <div className="space-y-5">
+          <div>
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Column Title *</label>
+            <input 
+              type="text" 
+              value={newColumnTitle}
+              onChange={(e) => setNewColumnTitle(e.target.value)}
+              placeholder="e.g. Testing, Review, Backlog..."
+              className="w-full bg-slate-800/50 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-blue-500 transition-all text-sm"
+              autoFocus
+              onKeyDown={(e) => e.key === 'Enter' && saveEditColumn()}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Column Color</label>
+            <div className="flex flex-wrap gap-3">
+              {[
+                { color: 'border-blue-500', label: 'Blue', bg: 'bg-blue-500' },
+                { color: 'border-amber-500', label: 'Amber', bg: 'bg-amber-500' },
+                { color: 'border-purple-500', label: 'Purple', bg: 'bg-purple-500' },
+                { color: 'border-emerald-500', label: 'Green', bg: 'bg-emerald-500' },
+                { color: 'border-rose-500', label: 'Red', bg: 'bg-rose-500' },
+                { color: 'border-indigo-500', label: 'Indigo', bg: 'bg-indigo-500' },
+                { color: 'border-cyan-500', label: 'Cyan', bg: 'bg-cyan-500' },
+                { color: 'border-pink-500', label: 'Pink', bg: 'bg-pink-500' },
+              ].map(opt => (
+                <button
+                  key={opt.color}
+                  onClick={() => setNewColumnColor(opt.color)}
+                  className={`w-8 h-8 rounded-full ${opt.bg} transition-all ${
+                    newColumnColor === opt.color ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900 scale-110' : 'opacity-60 hover:opacity-100'
+                  }`}
+                  title={opt.label}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button 
+              onClick={() => setIsEditColumnModalOpen(false)} 
+              className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-slate-300 font-bold rounded-xl transition-all border border-white/5"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={saveEditColumn} 
+              className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-900/40"
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Commit Confirmation Modal */}
       <Modal isOpen={isCommitModalOpen} onClose={() => {}} title="Unsaved Changes">
         <div className="space-y-6">
@@ -714,6 +958,30 @@ const BoardDetailPage = () => {
           )}
 
           <p className="text-[10px] text-slate-600 text-center">Commits to <code className="text-slate-400">origin/main</code> at <code className="text-slate-400">github.com/asstroboyz/developmet-tree</code></p>
+        </div>
+      </Modal>
+
+      {/* Unified Confirm Modal */}
+      <Modal isOpen={confirmModal.isOpen} onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })} title={confirmModal.title}>
+        <div className="space-y-6">
+          <p className="text-slate-300 text-sm">{confirmModal.message}</p>
+          <div className="flex gap-3 pt-2">
+            <button 
+              onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+              className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-slate-300 font-bold rounded-xl transition-all border border-white/5"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={() => {
+                if (confirmModal.onConfirm) confirmModal.onConfirm();
+                setConfirmModal({ ...confirmModal, isOpen: false });
+              }}
+              className="flex-1 py-3 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-rose-900/40"
+            >
+              Confirm
+            </button>
+          </div>
         </div>
       </Modal>
     </div>
