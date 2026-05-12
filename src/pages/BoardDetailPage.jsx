@@ -8,7 +8,7 @@ import {
   HiOutlineDocumentText, HiOutlineExclamation, HiMenuAlt2
 } from 'react-icons/hi';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { developmentTiBoard } from '../data/development-ti-board';
+import { developmentBoard } from '../data/development-board';
 import KanbanColumn from '../components/board/KanbanColumn';
 import Modal from '../components/common/Modal';
 
@@ -30,6 +30,7 @@ const BoardDetailPage = () => {
   const [changeLog, setChangeLog] = useState([]);
   const [commitMessage, setCommitMessage] = useState('');
   const [commitStatus, setCommitStatus] = useState(null); // null | 'loading' | 'success' | 'error'
+  const [deployCountdown, setDeployCountdown] = useState(0);
   const [commitError, setCommitError] = useState('');
   const [showAddMenu, setShowAddMenu] = useState(false);
   const fileInputRef = useRef(null);
@@ -134,12 +135,20 @@ const BoardDetailPage = () => {
       if (!res.ok) throw new Error(result.error || 'Commit failed');
 
       setCommitStatus('success');
-      setTimeout(() => {
-        setChangeLog([]);
-        setCommitStatus(null);
-        setIsCommitModalOpen(false);
-        navigate('/');
-      }, 1500);
+      setDeployCountdown(15);
+      
+      const interval = setInterval(() => {
+        setDeployCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            setChangeLog([]);
+            setCommitStatus(null);
+            setIsCommitModalOpen(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
     } catch (err) {
       setCommitStatus('error');
       setCommitError(err.message);
@@ -188,7 +197,7 @@ const BoardDetailPage = () => {
 
   useEffect(() => {
     if (id === 'development') {
-      setBoard(JSON.parse(JSON.stringify(developmentTiBoard)));
+      setBoard(JSON.parse(JSON.stringify(developmentBoard)));
     } else {
       setBoard({
         title: id.replace(/-/g, ' ').toUpperCase(),
@@ -947,7 +956,11 @@ const BoardDetailPage = () => {
                     : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/40'
               }`}
             >
-              {commitStatus === 'loading' ? '⏳ Committing...' : commitStatus === 'success' ? '✅ Pushed!' : '🚀 Commit & Push'}
+              {commitStatus === 'loading' 
+                ? '⏳ Committing...' 
+                : commitStatus === 'success' 
+                  ? `✅ Deploying... (${deployCountdown}s)` 
+                  : '🚀 Commit & Push'}
             </button>
           </div>
 
